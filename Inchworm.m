@@ -1,9 +1,14 @@
 %% Set up Robotarium object
 
 N = 4;
-initial_conditions = generate_initial_conditions(N, 'Width', 2, 'Height', 1, 'Spacing', 0.5);
-r = Robotarium('NumberOfRobots', N, 'ShowFigure', true, 'InitialConditions', initial_conditions);
-v = VideoWriter('InchWorm2.mp4', 'MPEG-4');
+initial_conditions = generate_initial_conditions(N, Width=2, Height=1, Spacing=0.5);
+r = Robotarium(NumberOfRobots=N, ShowFigure=true, InitialConditions=initial_conditions);
+
+if ~exist("out", "dir")
+    mkdir("out")
+end
+v = VideoWriter('out/InchWorm2.mp4', 'MPEG-4');
+
 open(v);
 %% Set up constants for experiment
 
@@ -16,10 +21,10 @@ iterations = 8000;
 
 % Communication topology for the desired formation.  We need 2 * N - 3 = 9
 % edges to ensure that the formation is rigid.
-L = [2 -1 -1 -1; ...
-    -1 3 -1 0; ...
-    -1 -1 3 -1; ...
-    -1 0 -1 2];
+L = [ 2 -1 -1 -1; ...
+     -1  3 -1  0; ...
+     -1 -1  3 -1; ...
+     -1  0 -1  2];
 
 mode = 1;
     
@@ -30,7 +35,7 @@ dx = zeros(2, N);
 %% Grab tools for converting to single-integrator dynamics and ensuring safety 
 
 uni_barrier_cert = create_uni_barrier_certificate_with_boundary();
-si_to_uni_dyn = create_si_to_uni_dynamics('LinearVelocityGain', 0.5, 'AngularVelocityLimit', pi/2);
+si_to_uni_dyn = create_si_to_uni_dynamics(LinearVelocityGain=0.5, AngularVelocityLimit=pi/2);
 
 % Iterate for the previously specified number of iterations
 for t = 0:iterations
@@ -40,18 +45,18 @@ for t = 0:iterations
         case 1
             d = 0.4;
             leader = 1;
-            weights = [0 d 2*d 3*d; ...
-                       d 0 d 0; ...
-                       2*d d 0 d; ...
-                       3*d 0 d 0];
+            weights = [  0   d 2*d 3*d; ...
+                         d   0   d   0; ...
+                       2*d   d   0   d; ...
+                       3*d   0   d   0];
         case 2
             d = 0.3;
             dd = sqrt(2*(d^2));
             leader = 4;
-            weights = [0 d d dd; ...
-                       d 0 dd 0; ...
-                       d dd 0 d; ...
-                       dd 0 d 0];
+            weights = [ 0  d  d dd; ...
+                        d  0 dd  0; ...
+                        d dd  0  d; ...
+                       dd  0  d  0];
         case 3
             leader = 4;
     end
