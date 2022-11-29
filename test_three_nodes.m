@@ -60,7 +60,7 @@ for t = 1:1000
         end
     end
 
-    % Mode swapping
+    % Mode swapping. The state of the system is fully controlled by E(1,2)
 
     % Done expanding edge   (1,2)
     if mode == 1 && (edge_len(x, 1, 2) >= max_dist - tolerance)
@@ -72,16 +72,16 @@ for t = 1:1000
         mode = 1;
         G.Edges.Weight(:) = [-1 1];
     end
-    % Done contracting edge (2,3)
-    if mode == 1 && (edge_len(x, 2, 3) <= min_dist + tolerance)
-        mode = 3;
-        G.Edges.Weight(:) = [1 -1];
-    end
-    % Done expanding edge   (2,3)
-    if mode == 3 && (edge_len(x, 2, 3) >= max_dist - tolerance)
-        mode = 1;
-        G.Edges.Weight(:) = [-1 1];
-    end
+%     % Done contracting edge (2,3)
+%     if mode == 1 && (edge_len(x, 2, 3) <= min_dist + tolerance)
+%         mode = 3;
+%         G.Edges.Weight(:) = [-1 1];
+%     end
+%     % Done expanding edge   (2,3)
+%     if mode == 3 && (edge_len(x, 2, 3) >= max_dist - tolerance)
+%         mode = 1;
+%         G.Edges.Weight(:) = [-1 1];
+%     end
 
     % Limit velocity to dx_max
     constrained_dx = dx./rowmag(dx).*min(dx_max, rowmag(dx));
