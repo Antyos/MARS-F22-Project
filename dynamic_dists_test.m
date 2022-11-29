@@ -1,3 +1,4 @@
+set(0,'DefaultFigureWindowStyle','docked')
 rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
 bound = @(A, lower, upper) min(max(A,lower),upper);
 
@@ -32,6 +33,8 @@ edges = [1 2; 2 3; 3 4; 4 5; 2 4; 1 5];
 weights = [3; 3; 3; 3; 2; 2];
 
 G = graph(edges(:,1), edges(:,2), weights);
+% plot(G, XData=x(:,1), YData=x(:,2));
+% pause(10000);
 for t = 1:1000
     dx(:,:) = 0; % Reset dx
     for i = 1:N
@@ -56,6 +59,7 @@ for t = 1:1000
 
     % Limit velocity to dx_max
     constrained_dx = dx./rowmag(dx).*min(dx_max, rowmag(dx));
+    constrained_dx(isnan(constrained_dx)) = 0;
     x = x + constrained_dx;
 
     % Constrain to screen
