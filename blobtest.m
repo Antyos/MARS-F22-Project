@@ -4,9 +4,9 @@ bound = @(A, lower, upper) min(max(A,lower),upper);
 x = [
     0 0;
     1 0;
+    2 1;
     3 0;
-    4 1;
-    4 4;
+    5 0;
 ];
 
 min_dist = 0.2;
@@ -15,7 +15,7 @@ max_dist = 1.5;
 dx = zeros(size(x));
 dx_max = 0.02;
 
-mode = 1;
+mode = 1; % 1:Repel, -1:Retract
 
 N = length(x);
 
@@ -35,15 +35,14 @@ for t = 1:1000
             else
                 target_dist = max_dist;
             end
-
             dx(i,:) = dx(i,:) + 0.01*abs(w)*(norm(x(j,:)-x(i,:))^2 - target_dist^2)*(x(j,:)-x(i,:));
         end
     end
 
-    if mode == 1 && norm(x(1,:)-x(2,:)) > max_dist
+    if mode == 1 && norm(x(1,:)-x(2,:)) >= max_dist
         mode = -1;
     end
-    if mode == -1 && norm(x(1,:)-x(2,:)) < min_dist
+    if mode == -1 && norm(x(1,:)-x(2,:)) <= min_dist
         mode = 1;
     end
     if mode == 1
@@ -67,5 +66,5 @@ for t = 1:1000
     hold off
     axis equal
 
-    pause(0.01)
+    pause(0.02)
 end

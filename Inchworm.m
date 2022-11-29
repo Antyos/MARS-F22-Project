@@ -1,4 +1,5 @@
 %% Set up Robotarium object
+set(0,'DefaultFigureWindowStyle','docked')
 
 N = 4;
 initial_conditions = generate_initial_conditions(N, Width=2, Height=1, Spacing=0.5);
@@ -7,9 +8,7 @@ r = Robotarium(NumberOfRobots=N, ShowFigure=true, InitialConditions=initial_cond
 if ~exist("out", "dir")
     mkdir("out")
 end
-v = VideoWriter('out/InchWorm2.mp4', 'MPEG-4');
 
-open(v);
 %% Set up constants for experiment
 
 %Gains for the transformation from single-integrator to unicycle dynamics
@@ -25,7 +24,10 @@ L = [ 2 -1 -1 -1; ...
      -1  3 -1  0; ...
      -1 -1  3 -1; ...
      -1  0 -1  2];
-
+% Mode variable
+% 1: extend (formation/consensus with larger defined weights)
+% 2: retract (formation/consensus with smaller defined weights)
+% 3: retract (consensus with no defined weights)
 mode = 1;
     
 % Initialize velocity vector for agents.  Each agent expects a 2 x 1
@@ -40,9 +42,8 @@ si_to_uni_dyn = create_si_to_uni_dynamics(LinearVelocityGain=0.5, AngularVelocit
 % Iterate for the previously specified number of iterations
 for t = 0:iterations
     % Change mode variables
-
     switch mode
-        case 1
+        case 1 
             d = 0.4;
             leader = 1;
             weights = [  0   d 2*d 3*d; ...
@@ -122,7 +123,7 @@ for t = 0:iterations
     % Send the previously set velocities to the agents.  This function must be called!
     r.step();
 
-    %% Switch mode
+    %% Switch mode (time/iteration based)
 
     if(mod(t,2000) == 0)
         mode = 1;
@@ -130,12 +131,7 @@ for t = 0:iterations
         mode = 2;
     end
 
-    %% Write video
-    frame = getframe(gcf);
-    writeVideo(v, frame);
 end
-
-v.close();
 
 % We can call this function to debug our experiment!  Fix all the errors
 % before submitting to maximize the chance that your experiment runs
