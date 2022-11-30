@@ -47,17 +47,19 @@ isLeader([1, end]) = true;
 isFixed = false(N, 1);
 isFixed(1) = true;
 
-edges = [1 2; 2 3; 1 3];
-weights = ones(length(edges), 1);
+edges = proximity_graph(x, 2);
+weights = ones(height(edges), 1);
 
 isExpanding = true;
+super_leader = 1;  % Node responsible for controlling expansion
 
-G = graph(edges(:,1), edges(:,2), weights);
+G = graph(edges.EndNodes(:,1), edges.EndNodes(:,2), weights);
 
 % Setup plotting
 x = r.get_poses()';
 p = plot(G, "XData", x(:,1), "YData", x(:,2), ...
     "LineWidth",3, ...
+    "EdgeColor", "black", ...
     "MarkerSize", MARKER_SIZE, ...
     "EdgeFontSize", FONT_SIZE ...
 );
@@ -74,6 +76,7 @@ for t = 1:iterations
     % Retrieve the most recent poses from the Robotarium.  The time delay is
     % approximately 0.033 seconds
     x = r.get_poses()';
+    G = add_new_edges(G, proximity_graph(x, max_dist));
 
     % Swap fixed node if we hit a wall
     if ( ...
@@ -118,14 +121,15 @@ for t = 1:iterations
 
     %% Mode swapping. The state of the system is fully controlled by E(1,2)
 
-    % Done expanding edge   (1,2)
-    if isExpanding && (edge_len(x, 1, 2) >= max_dist - close_enough)
+    % Done expanding
+    super_leader_edge_lens = arrayfun(@(j) edge_len(x, super_leader, j), neighbors(G, super_leader));
+    if isExpanding && (max(super_leader_edge_lens) >= max_dist - close_enough)
         isExpanding = false;
         isFixed(isLeader) = ~isFixed(isLeader);
     end
 
-    % Done contracting edge (1,2)
-    if ~isExpanding && (edge_len(x, 1, 2) <= min_dist + close_enough)
+    % Done contracting
+    if ~isExpanding && (min(super_leader_edge_lens) <= min_dist + close_enough)
         isExpanding = true;
         isFixed(isLeader) = ~isFixed(isLeader);
     end
@@ -143,7 +147,6 @@ for t = 1:iterations
     r.set_velocities(1:N, dxu);
 
     %% Update plot
-%     debug_box.String=sprintf("Mode=%d", isExpanding);
     p.XData = x(:, 1);
     p.YData = x(:, 2);
 %     q.XData = x(:, 1);
@@ -154,8 +157,8 @@ for t = 1:iterations
     mode_text.String = fi(isExpanding, "Mode: Expanding", "Mode: Contracting");
 
     % Label edges with their length
-    edge_lengths = arrayfun(@(row) edge_len(x, G.Edges.EndNodes(row, 1), G.Edges.EndNodes(row, 2)), 1:height(G.Edges));
-    labeledge(p, 1:length(edge_lengths), arrayfun(@(s) num2str(s, 3), edge_lengths, 'UniformOutput', false))
+    edge_lengths = arrayfun(@(row) edge_len(x, G.Edges.EndNodes(row, 1), G.Edges.EndNodes(row, 2)), 1:G.numedges);
+    labeledge(p, 1:length(edge_lengths), arrayfun(@(s) num2str(s, 2), edge_lengths, 'UniformOutput', false))
 
     % Update node colors
     p.NodeColor = "black";
@@ -176,6 +179,30 @@ end
 r.debug()
 
 %% Helper Functions
+
+% Delta-disk graph: get edges of all nodes within certain distance
+function edges = proximity_graph(x, dist)
+    edge_len = @(x, i, j) norm(x(j,1:2)-x(i,1:2));
+
+    N = length(x);
+    edges = cell(0, 1);
+    for i = 1:N-1
+        for j = i+1:N
+            if edge_len(x, i, j) <= dist
+                edges{end+1,1} = [i j]; %#ok
+            end
+        end
+    end
+    edges = cell2table(edges, "VariableNames", "EndNodes");
+end
+
+% Add new edges and remove duplicates
+function G = add_new_edges(G, edges)
+    if ismultigraph(G)
+        G = simplify(addedge(G, edges));
+    end
+end
+
 
 % Marker Size Helper Function to scale size with figure window
 % Input: robotarium instance, desired size of the marker in meters
