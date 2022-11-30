@@ -4,16 +4,16 @@ rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
 bound = @(A, lower, upper) min(max(A,lower),upper);
 edge_len = @(x, i, j) norm(x(j,:)-x(i,:));
 
-window = [0 0 3 2]; % (x, y, w, h)
+window = [0 0 6 6]; % (x, y, w, h)
 border = 0.5;
 
-tolerance = 0.05;
+tolerance = 0.1;
 
-min_dist = 0.5;
-max_dist = 1;
+min_dist = 0.6;
+max_dist = 1.5;
 dx_max = 0.02;
 
-x = [1 1; 2 1; 2.5 1];  % Position
+x = [1 2; 2 2; 3 3; 3 1; 4 2];  % Position
 dx = zeros(size(x)); % Velocity
 N = length(x);  % Num nodes
 
@@ -23,7 +23,7 @@ isFixed = false(N, 1);  % Bool mask of which nodes are fixed
 isFixed(1) = true;
 
 
-edges = [1 2; 2 3];
+edges = [1 2; 2 3; 3 4; 2 4; 1 3; 3 5; 4 5];
 weights = ones(length(edges), 1);
 
 isExpanding = 1;
