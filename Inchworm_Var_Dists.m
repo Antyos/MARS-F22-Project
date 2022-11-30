@@ -2,7 +2,7 @@
 set(0,'DefaultFigureWindowStyle','docked')
 
 N = 6;
-initial_conditions = generate_initial_conditions(N, 'Width', 2, 'Height', 1, 'Spacing', 0.5);
+initial_conditions = generate_initial_conditions(N, 'Width', 2, 'Height', 1, 'Spacing', 0.2);
 r = Robotarium('NumberOfRobots', N, 'ShowFigure', true, 'InitialConditions', initial_conditions);
 
 %% Create barrier certificates and dynamics transformers
@@ -12,7 +12,8 @@ si_barrier_cert = create_si_barrier_certificate_with_boundary();
 si_to_uni_dynamics = create_si_to_uni_dynamics('LinearVelocityGain', 0.4, 'AngularVelocityLimit', pi/2);
 
 %% Go to desired inital positions
-initial_positions = [-1.4 -1.1 -0.8 -0.5 -0.2 -0.8; 0 0 0.1 0 0 -0.1; 0 0 0 0 0 0];
+% initial_positions = [-1.4 -1.1 -0.8 -0.5 -0.2 -0.8; 0 0 0.1 0 0 -0.1; 0 0 0 0 0 0];
+initial_positions = [-1.4 -0.9 -0.48 0.05 0.55 -0.48; 0 0 0.1 0 0 -0.1; 0 0 0 0 0 0];
 
 args = {'PositionError', 0.03, 'RotationError', 50};
 init_checker = create_is_initialized(args{:});
@@ -56,11 +57,11 @@ w2 = 40;
 w3 = 10;
 
 % Constant Distances
-d = 1;
+d = 5;
 % Variable Distances
-d14 = 1.4;
-d25 = 1.4;
-d36 = 1.96;
+d14 = 0.7;
+d25 = 0.7;
+d36 = 0.98;
 
 % Create edges, weights, and distances arrays
 edges =   [1 2; 1 4; 2 3; 2 5; 2 6; 3 4; 3 6; 4 5; 4 6];
@@ -73,7 +74,7 @@ G = graph(edges(:,1), edges(:,2), weights);
 mode = 1; % 1:Push tail, 2:Pull to head
 leader = 5;
 mode_leaders = [5 1];
-close_enough = 0.05;
+close_enough = 0.1;
 
 formation_control_gain = 10;
 
@@ -81,6 +82,11 @@ iterations = 5000;
 
 x = r.get_poses()';
 r.step()
+
+p = plot(G, XData=x(1:2,1), YData=x(1:2,2));
+highlight(p, [1 2 3 4], [2 3 4 5]);
+highlight(p, [2 3 4], [6 6 6], 'LineStyle', '--', 'EdgeColor', 'black');
+highlight(p, 6, 'NodeColor', 'black');
 
 %% Inchworm formation control
 
@@ -119,17 +125,20 @@ for t = 0:iterations
        abs(norm(x(3,1:2)-x(6,1:2)) - dists(findedge(G,3,6))) <= close_enough
         if mode == 1
             mode = 2;
-            d14 = 2.9;
-            d25 = 2.9;
-            d36 = 0.40;
+            d14 = 1.45;
+            d25 = 1.45;
+            d36 = 0.2;
         else
             mode = 1;
-            d14 = 1.40;
-            d25 = 1.40;
-            d36 = 1.96;
+            d14 = 0.7;
+            d25 = 0.7;
+            d36 = 0.98;
         end
         dists = [d; d14; d; d25; d; d; d36; d; d];
     end
+
+    p.XData = x(:,1);
+    p.YData = x(:,2);
 
     % Avoid actuator errors
     % To avoid errors, we need to threshold dx
