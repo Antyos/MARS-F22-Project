@@ -26,9 +26,10 @@ leader_controller = create_si_position_controller('XVelocityGain', 0.8, 'YVeloci
 
 
 close_enough = 0.05;  % Tolerance for getting close to min/max bounds
+wall_border = 0.1;
 
-min_dist = 0.5;  % Min distance to maintain
-max_dist = 1.5;    % Max distance to maintain
+min_dist = 0.3;  % Min distance to maintain
+max_dist = 1.2;  % Max distance to maintain
 dx_max = 3/4*r.max_linear_velocity;   % Max speed
 
 x = [1 1; 2 1; 2.5 1];  % Position
@@ -50,7 +51,7 @@ G = graph(edges(:,1), edges(:,2), weights);
 
 % Setup plotting
 x = r.get_poses()';
-p = plot(G, XData=x(:,1), YData=x(:,2));
+p = plot(G, "XData", x(:,1), "YData", x(:,2), "LineWidth",3, "MarkerSize", 10);
 text(-1.5, 0.9, "Mode: ");
 mode_text = text(-1.1, 0.9, "");
 % hold on
@@ -70,6 +71,16 @@ for t = 1:iterations
     % Retrieve the most recent poses from the Robotarium.  The time delay is
     % approximately 0.033 seconds
     x = r.get_poses()';
+
+    % Reverse fixed node if we hit a wall
+    if ( ...
+        any(x(:,1)<=r.boundaries(1)+wall_border) || ...
+        any(x(:,1)>=r.boundaries(2)-wall_border) || ...
+        any(x(:,2)<=r.boundaries(3)+wall_border) || ...
+        any(x(:,2)>=r.boundaries(4)-wall_border) ...
+    )
+        isFixed(isLeader) = ~isFixed(isLeader);
+    end
 
     % Reset dx
     dx(:,:) = 0;
@@ -126,20 +137,12 @@ for t = 1:iterations
     dxu = si_to_uni_dyn(dxi', x');
     dxu = uni_barrier_cert(dxu, x');
 
-    % Constrain to screen
-    x(:,1) = bound(x(:,1), r.boundaries(1), r.boundaries(2));
-    x(:,2) = bound(x(:,2), r.boundaries(3), r.boundaries(4));
+%     % Constrain to screen
+%     x(:,1) = bound(x(:,1), r.boundaries(1), r.boundaries(2));
+%     x(:,2) = bound(x(:,2), r.boundaries(3), r.boundaries(4));
 
     %Set velocities
     r.set_velocities(1:N, dxu);
-
-    % Reverse fixed node if we hit a wall
-    if ( ...
-        any(x(:,1)<=r.boundaries(1)) || any(x(:,1)>=r.boundaries(2)) || ...
-        any(x(:,2)<=r.boundaries(3)) || any(x(:,2)>=r.boundaries(4)) ...
-    )
-        isFixed(isLeader) = ~isFixed(isLeader);
-    end
 
     %% Update plot
 %     debug_box.String=sprintf("Mode=%d", isExpanding);
@@ -161,16 +164,16 @@ for t = 1:iterations
     labeledge(p, 1:length(edge_lengths), arrayfun(@(s) num2str(s, 3), edge_lengths, 'UniformOutput', false))
 
     % Update node colors
-    p.NodeColor = "#0072BD";  % Default blue
-    highlight(p, isLeader, NodeColor="blue")
-    highlight(p, isFixed, NodeColor="red")
+    p.NodeColor = "black";  % Default blue
+    highlight(p, isLeader, "NodeColor", "blue")
+    highlight(p, isFixed, "NodeColor", "red")
     for id = find(isLeader)'
         if isExpanding
             c = "green";
         else
             c = "magenta";
         end
-        highlight(p, id, neighbors(G,id), EdgeColor=c);
+        highlight(p, id, neighbors(G,id), "EdgeColor", c);
     end
 
     r.step()
