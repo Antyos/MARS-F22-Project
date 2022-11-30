@@ -2,6 +2,8 @@
 rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
 bound = @(A, lower, upper) min(max(A,lower),upper);
 edge_len = @(x, i, j) norm(x(j,1:2)-x(i,1:2));
+% Inline conditional: https://stackoverflow.com/a/32253460
+fi = @(varargin)varargin{length(varargin)-varargin{1}};
 
 N = 3;  % Number of robots
 
@@ -15,7 +17,7 @@ formation_control_gain = 10;
 
 % Select the number of iterations for the experiment.  This value is
 % arbitrary
-iterations = 8000;
+iterations = 5000;
 
 % Single-integrator -> unicycle dynamics mapping
 si_to_uni_dyn = create_si_to_uni_dynamics('LinearVelocityGain', 0.8);
@@ -24,45 +26,46 @@ uni_barrier_cert = create_uni_barrier_certificate_with_boundary();
 % Single-integrator position controller
 leader_controller = create_si_position_controller('XVelocityGain', 0.8, 'YVelocityGain', 0.8, 'VelocityMagnitudeLimit', 0.08);
 
+% Font/Marker sizes for Robotarium environment
+MARKER_SIZE = determine_marker_size(r, 0.1);
+FONT_SIZE = determine_font_size(r, 0.05);
 
 close_enough = 0.05;  % Tolerance for getting close to min/max bounds
-wall_border = 0.1;
+wall_border = 0.1;  % Distance to wall border for collisions
 
 min_dist = 0.3;  % Min distance to maintain
 max_dist = 1.2;  % Max distance to maintain
 dx_max = 3/4*r.max_linear_velocity;   % Max speed
 
-x = [1 1; 2 1; 2.5 1];  % Position
-dx = zeros(size(x)); % Velocity
+dx = zeros(N,2); % Velocity
 
-
-isLeader= false(N, 1);
+% Bool mask of leader nodes
+isLeader = false(N, 1);
 isLeader([1, end]) = true;
-isFixed = false(N, 1);  % Bool mask of which nodes are fixed
+
+% Bool mask of which nodes are fixed. Note, only leader nodes can be fixed
+isFixed = false(N, 1);
 isFixed(1) = true;
 
-
-edges = [1 2; 2 3];
+edges = [1 2; 2 3; 1 3];
 weights = ones(length(edges), 1);
 
-isExpanding = 1;
+isExpanding = true;
 
 G = graph(edges(:,1), edges(:,2), weights);
 
 % Setup plotting
 x = r.get_poses()';
-p = plot(G, "XData", x(:,1), "YData", x(:,2), "LineWidth",3, "MarkerSize", 10);
-text(-1.5, 0.9, "Mode: ");
-mode_text = text(-1.1, 0.9, "");
+p = plot(G, "XData", x(:,1), "YData", x(:,2), ...
+    "LineWidth",3, ...
+    "MarkerSize", MARKER_SIZE, ...
+    "EdgeFontSize", FONT_SIZE ...
+);
+mode_text = text(-1.5, 0.9, "Mode: ", "FontSize", FONT_SIZE);
 % hold on
 % % Velocity vectors for convenience
 % q = quiver(x(:,1), x(:,2), dx(:,1), dx(:,2), 0.3);
 % hold off
-% debug_box = annotation( ...
-%     textbox=[0.2, 0.6, 0.3, 0.3],...
-%     String="", ...
-%     FitBoxToText="on" ...
-% );
 
 r.step()
 
@@ -72,7 +75,7 @@ for t = 1:iterations
     % approximately 0.033 seconds
     x = r.get_poses()';
 
-    % Reverse fixed node if we hit a wall
+    % Swap fixed node if we hit a wall
     if ( ...
         any(x(:,1)<=r.boundaries(1)+wall_border) || ...
         any(x(:,1)>=r.boundaries(2)-wall_border) || ...
@@ -113,9 +116,8 @@ for t = 1:iterations
         end
     end
 
-
     %% Mode swapping. The state of the system is fully controlled by E(1,2)
-    
+
     % Done expanding edge   (1,2)
     if isExpanding && (edge_len(x, 1, 2) >= max_dist - close_enough)
         isExpanding = false;
@@ -137,10 +139,6 @@ for t = 1:iterations
     dxu = si_to_uni_dyn(dxi', x');
     dxu = uni_barrier_cert(dxu, x');
 
-%     % Constrain to screen
-%     x(:,1) = bound(x(:,1), r.boundaries(1), r.boundaries(2));
-%     x(:,2) = bound(x(:,2), r.boundaries(3), r.boundaries(4));
-
     %Set velocities
     r.set_velocities(1:N, dxu);
 
@@ -153,18 +151,14 @@ for t = 1:iterations
 %     q.UData = dx(:, 1);
 %     q.VData = dx(:, 2);
 % 
-    if isExpanding
-        mode_text.String = "Expanding";
-    else
-        mode_text.String = "Contracting";
-    end
+    mode_text.String = fi(isExpanding, "Mode: Expanding", "Mode: Contracting");
 
     % Label edges with their length
     edge_lengths = arrayfun(@(row) edge_len(x, G.Edges.EndNodes(row, 1), G.Edges.EndNodes(row, 2)), 1:height(G.Edges));
     labeledge(p, 1:length(edge_lengths), arrayfun(@(s) num2str(s, 3), edge_lengths, 'UniformOutput', false))
 
     % Update node colors
-    p.NodeColor = "black";  % Default blue
+    p.NodeColor = "black";
     highlight(p, isLeader, "NodeColor", "blue")
     highlight(p, isFixed, "NodeColor", "red")
     for id = find(isLeader)'
@@ -180,3 +174,41 @@ for t = 1:iterations
 end
 
 r.debug()
+
+%% Helper Functions
+
+% Marker Size Helper Function to scale size with figure window
+% Input: robotarium instance, desired size of the marker in meters
+function marker_size = determine_marker_size(robotarium_instance, marker_size_meters)
+    % Get the size of the robotarium figure window in pixels
+    curunits = get(robotarium_instance.figure_handle, 'Units');
+    set(robotarium_instance.figure_handle, 'Units', 'Points');
+    cursize = get(robotarium_instance.figure_handle, 'Position');
+    set(robotarium_instance.figure_handle, 'Units', curunits);
+    
+    % Determine the ratio of the robot size to the x-axis (the axis are
+    % normalized so you could do this with y and figure height as well).
+    marker_ratio = (marker_size_meters)/(robotarium_instance.boundaries(2) -...
+        robotarium_instance.boundaries(1));
+    
+    % Determine the marker size in points so it fits the window. cursize(3) is
+    % the width of the figure window in pixels. (the axis are
+    % normalized so you could do this with y and figure height as well).
+    marker_size = cursize(3) * marker_ratio;
+end
+
+% Font Size Helper Function to scale size with figure window
+% Input: robotarium instance, desired height of the font in meters
+function font_size = determine_font_size(robotarium_instance, font_height_meters)  
+    % Get the size of the robotarium figure window in point units
+    curunits = get(robotarium_instance.figure_handle, 'Units');
+    set(robotarium_instance.figure_handle, 'Units', 'Pixels');
+    cursize = get(robotarium_instance.figure_handle, 'Position');
+    set(robotarium_instance.figure_handle, 'Units', curunits);
+    % Determine the ratio of the font height to the y-axis
+    font_ratio = (font_height_meters)/(robotarium_instance.boundaries(4) -...
+        robotarium_instance.boundaries(3));
+    % Determine the font size in points so it fits the window. cursize(4) is
+    % the hight of the figure window in points.
+    font_size = cursize(4) * font_ratio;
+end
