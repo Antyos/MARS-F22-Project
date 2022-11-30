@@ -9,16 +9,16 @@ min_dist = 0.5;
 max_dist = 1.5;
 dx_max = 0.02;
 
-x = [1 2; 2 2; 3 2];
+x = [1 2; 2 2; 3 3; 4 2];
 dx = zeros(size(x));
 N = length(x);
 
 tail = 1;
 head = 3;
 
-edges = [1 2; 2 3];
-weights = [1 1];
-isExpanding = logical([1 0 0]);
+edges = [1 2; 2 3; 3 4];
+weights = [1 1 1];
+isFixed = logical([1 0 0 0]);
 
 G = graph(edges(:,1), edges(:,2), weights);
 
@@ -43,7 +43,7 @@ for t = 1:1000
     % Consensus
     for i = 1:N
         % Skip leader; it's static
-        if isExpanding(i)
+        if isFixed(i)
             continue
         end
 
@@ -65,20 +65,16 @@ for t = 1:1000
     % Mode swapping. The state of the system is fully controlled by E(1,2)
 
     % Done expanding edge   (1,2)
-%     if mode == 1 && (edge_len(x, 1, 2) >= max_dist - tolerance)
-%         mode = 0;
-%         isExpanding([1,3]) = ~isExpanding([1,3]);
-% %         G.Edges.Weight(1) = 1;
-%     end
-%     % Done contracting edge (1,2)
-%     if mode == 0 && (edge_len(x, 1, 2) <= min_dist + tolerance)
-%         mode = 1;
-%         isExpanding([1,3]) = ~isExpanding([1,3]);
-% %         G.Edges.Weight(1) = -1;
-%     end
-    if mod(t, 50) == 0
-        mode = ~mode;
-        isExpanding([1,3]) = ~isExpanding([1,3]);
+    if mode == 1 && (edge_len(x, 1, 2) >= max_dist - tolerance)
+        mode = 0;
+        isFixed([1,end]) = ~isFixed([1,end]);
+%         G.Edges.Weight(1) = 1;
+    end
+    % Done contracting edge (1,2)
+    if mode == 0 && (edge_len(x, 1, 2) <= min_dist + tolerance)
+        mode = 1;
+        isFixed([1,end]) = ~isFixed([1,end]);
+%         G.Edges.Weight(1) = -1;
     end
 
     % Limit velocity to dx_max
@@ -90,14 +86,18 @@ for t = 1:1000
     x(:,1) = bound(x(:,1), 0, 6);
     x(:,2) = bound(x(:,2), 0, 6);
 
+    if any(x(:)==6) || any(x(:)==0)
+        isFixed([1,end]) = ~isFixed([1,end]);
+    end
+
     set(debug_box, String=sprintf( ...
         "Mode=%d\nE(1,2)=%.3f (%d,w=%d)\nE(2,3)=%.3f (%d,w=%d)", ...
         mode,...
-        edge_len(x,1,2), isExpanding(1), G.Edges.Weight(1), ...
-        edge_len(x,2,3), isExpanding(3), G.Edges.Weight(2) ...
+        edge_len(x,1,2), isFixed(1), G.Edges.Weight(1), ...
+        edge_len(x,2,3), isFixed(3), G.Edges.Weight(2) ...
     ));
     p = plot(G, XData=x(:,1), YData=x(:,2));
-    highlight(p, isExpanding, NodeColor="red")
+    highlight(p, isFixed, NodeColor="red")
 %     hold on
     % Velocity vectors for convenience
 %     quiver(x(:,1), x(:,2), dx(:,1), dx(:,2), 0.3);
