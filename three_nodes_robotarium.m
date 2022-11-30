@@ -1,7 +1,7 @@
 % set(0,'DefaultFigureWindowStyle','docked')
 rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
 bound = @(A, lower, upper) min(max(A,lower),upper);
-edge_len = @(x, i, j) norm(x(j,:)-x(i,:));
+edge_len = @(x, i, j) norm(x(j,1:2)-x(i,1:2));
 
 N = 3;  % Number of robots
 
@@ -17,10 +17,18 @@ formation_control_gain = 10;
 % arbitrary
 iterations = 8000;
 
+% Single-integrator -> unicycle dynamics mapping
+si_to_uni_dyn = create_si_to_uni_dynamics('LinearVelocityGain', 0.8);
+% Single-integrator barrier certificates
+uni_barrier_cert = create_uni_barrier_certificate_with_boundary();
+% Single-integrator position controller
+leader_controller = create_si_position_controller('XVelocityGain', 0.8, 'YVelocityGain', 0.8, 'VelocityMagnitudeLimit', 0.08);
+
+
 close_enough = 0.05;  % Tolerance for getting close to min/max bounds
 
 min_dist = 0.5;  % Min distance to maintain
-max_dist = 1;    % Max distance to maintain
+max_dist = 1.5;    % Max distance to maintain
 dx_max = 3/4*r.max_linear_velocity;   % Max speed
 
 x = [1 1; 2 1; 2.5 1];  % Position
@@ -44,7 +52,7 @@ G = graph(edges(:,1), edges(:,2), weights);
 x = r.get_poses()';
 p = plot(G, XData=x(:,1), YData=x(:,2));
 text(-1.5, 0.9, "Mode: ");
-mode_text = text(-1.2, 0.9, "");
+mode_text = text(-1.1, 0.9, "");
 % hold on
 % % Velocity vectors for convenience
 % q = quiver(x(:,1), x(:,2), dx(:,1), dx(:,2), 0.3);
@@ -54,10 +62,6 @@ mode_text = text(-1.2, 0.9, "");
 %     String="", ...
 %     FitBoxToText="on" ...
 % );
-% rectangle(Position=window);
-% xlim([-border, window(3)+border]+window(1));
-% ylim([-border, window(4)+border]+window(2));
-% axis equal
 
 r.step()
 
@@ -94,22 +98,21 @@ for t = 1:iterations
                 target_dist = min_dist;
             end
 
-            dx(i,:) = dx(i,:) + abs(w)*(edge_len(x(:, 1:2), i, j)^2 - target_dist^2)*(x(j,1:2)-x(i,1:2));
+            dx(i,:) = dx(i,:) + formation_control_gain*w*(edge_len(x(:, 1:2), i, j)^2 - target_dist^2)*(x(j,1:2)-x(i,1:2));
         end
     end
 
-    %%%%%%%%
-    % Mode swapping. The state of the system is fully controlled by E(1,2)
-    %%%%%%%%
 
+    %% Mode swapping. The state of the system is fully controlled by E(1,2)
+    
     % Done expanding edge   (1,2)
-    if isExpanding && (edge_len(x, 1, 2) >= max_dist - close_enough*10)
+    if isExpanding && (edge_len(x, 1, 2) >= max_dist - close_enough)
         isExpanding = false;
         isFixed(isLeader) = ~isFixed(isLeader);
     end
 
     % Done contracting edge (1,2)
-    if ~isExpanding && (edge_len(x, 1, 2) <= min_dist + close_enough*10)
+    if ~isExpanding && (edge_len(x, 1, 2) <= min_dist + close_enough)
         isExpanding = true;
         isFixed(isLeader) = ~isFixed(isLeader);
     end
@@ -118,7 +121,7 @@ for t = 1:iterations
     % Limit velocity to dx_max
     dxi = dx./rowmag(dx).*min(dx_max, rowmag(dx));
     dxi(isnan(dxi)) = 0;
-        
+
     % Use barrier certificate and convert to unicycle dynamics
     dxu = si_to_uni_dyn(dxi', x');
     dxu = uni_barrier_cert(dxu, x');
@@ -152,7 +155,11 @@ for t = 1:iterations
     else
         mode_text.String = "Contracting";
     end
-    
+
+    % Label edges with their length
+    edge_lengths = arrayfun(@(row) edge_len(x, G.Edges.EndNodes(row, 1), G.Edges.EndNodes(row, 2)), 1:height(G.Edges));
+    labeledge(p, 1:length(edge_lengths), arrayfun(@(s) num2str(s, 3), edge_lengths, 'UniformOutput', false))
+
     % Update node colors
     p.NodeColor = "#0072BD";  % Default blue
     highlight(p, isLeader, NodeColor="blue")
