@@ -1,13 +1,9 @@
 %% Set up Robotarium object
-set(0,'DefaultFigureWindowStyle','docked')
+%set(0,'DefaultFigureWindowStyle','docked')
 
 N = 4;
-initial_conditions = generate_initial_conditions(N, Width=2, Height=1, Spacing=0.5);
-r = Robotarium(NumberOfRobots=N, ShowFigure=true, InitialConditions=initial_conditions);
-
-if ~exist("out", "dir")
-    mkdir("out")
-end
+initial_conditions = generate_initial_conditions(N, 'Width', 2, 'Height', 1, 'Spacing', 0.5);
+r = Robotarium('NumberOfRobots', N, 'ShowFigure', true, 'InitialConditions', initial_conditions);
 
 %% Set up constants for experiment
 
@@ -16,7 +12,7 @@ formation_control_gain = 10;
 
 % Select the number of iterations for the experiment.  This value is
 % arbitrary
-iterations = 8000;
+iterations = 5000;
 
 % Communication topology for the desired formation.  We need 2 * N - 3 = 9
 % edges to ensure that the formation is rigid.
@@ -27,7 +23,6 @@ L = [ 2 -1 -1 -1; ...
 % Mode variable
 % 1: extend (formation/consensus with larger defined weights)
 % 2: retract (formation/consensus with smaller defined weights)
-% 3: retract (consensus with no defined weights)
 mode = 1;
     
 % Initialize velocity vector for agents.  Each agent expects a 2 x 1
@@ -37,7 +32,7 @@ dx = zeros(2, N);
 %% Grab tools for converting to single-integrator dynamics and ensuring safety 
 
 uni_barrier_cert = create_uni_barrier_certificate_with_boundary();
-si_to_uni_dyn = create_si_to_uni_dynamics(LinearVelocityGain=0.5, AngularVelocityLimit=pi/2);
+si_to_uni_dyn = create_si_to_uni_dynamics('LinearVelocityGain', 0.5, 'AngularVelocityLimit', pi/2);
 
 % Iterate for the previously specified number of iterations
 for t = 0:iterations
@@ -58,8 +53,6 @@ for t = 0:iterations
                         d  0 dd  0; ...
                         d dd  0  d; ...
                        dd  0  d  0];
-        case 3
-            leader = 4;
     end
 
     % Weight matrix containing the desired inter-agent distances to achieve a
@@ -88,19 +81,9 @@ for t = 0:iterations
                 
                 % For each neighbor, calculate appropriate formation control term and
                 % add it to the total velocity
-                
-                switch mode
-                    case 1
-                        dx(:, i) = dx(:, i) + ...
-                        formation_control_gain*(norm(x(1:2, i) - x(1:2, j))^2 - weights(i, j)^2) ... 
-                        *(x(1:2, j) - x(1:2, i));
-                    case 2
-                        dx(:, i) = dx(:, i) + ...
-                        formation_control_gain*(norm(x(1:2, i) - x(1:2, j))^2 - weights(i, j)^2) ... 
-                        *(x(1:2, j) - x(1:2, i));
-                    case 3
-                        dx(:, i) = dx(:, i) + (x(1:2, j) - x(1:2, i));
-                end
+                dx(:, i) = dx(:, i) + ...
+                    formation_control_gain*(norm(x(1:2, i) - x(1:2, j))^2 - weights(i, j)^2) ...
+                    *(x(1:2, j) - x(1:2, i));
             end
         end
     end
@@ -136,4 +119,4 @@ end
 % We can call this function to debug our experiment!  Fix all the errors
 % before submitting to maximize the chance that your experiment runs
 % successfully.
-r.debug();
+%r.debug();

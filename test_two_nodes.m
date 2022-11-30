@@ -33,7 +33,7 @@ for t = 1:1000
             else
                 target_dist = min_dist;
             end
-            dx(i,:) = dx(i,:) + 0.05*abs(w)*(norm(x(j,:)-x(i,:))^2 - target_dist^2)*(x(j,:)-x(i,:));
+            dx(i,:) = dx(i,:) + 0.1*abs(w)*(norm(x(j,:)-x(i,:))^2 - target_dist^2)*(x(j,:)-x(i,:));
         end
     end
 
