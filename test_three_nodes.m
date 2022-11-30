@@ -9,19 +9,21 @@ border = 0.5;
 
 tolerance = 0.1;
 
-min_dist = 0.3;
+min_dist = 0.6;
 max_dist = 1.5;
 dx_max = 0.02;
 
-x = [1 2; 2 2; 3 3; 3 1];  % Position
+x = [1 2; 2 2; 3 3; 3 1; 4 2];  % Position
 dx = zeros(size(x)); % Velocity
 N = length(x);  % Num nodes
 
+isLeader= false(N, 1);
+isLeader([1, end]) = true;
 isFixed = false(N, 1);  % Bool mask of which nodes are fixed
 isFixed(1) = true;
 
 
-edges = [1 2; 2 3; 3 4; 2 4];
+edges = [1 2; 2 3; 3 4; 2 4; 1 3; 3 5; 4 5];
 weights = ones(length(edges), 1);
 
 isExpanding = 1;
@@ -32,8 +34,12 @@ G = graph(edges(:,1), edges(:,2), weights);
 f = figure(1);
 clf(f);
 p = plot(G, XData=x(:,1), YData=x(:,2));
+hold on
+% Velocity vectors for convenience
+q = quiver(x(:,1), x(:,2), dx(:,1), dx(:,2), 0.3);
+hold off
 debug_box = annotation( ...
-    textbox=[0.2, 0.5, 0.3, 0.3],...
+    textbox=[0.2, 0.6, 0.3, 0.3],...
     String="", ...
     FitBoxToText="on" ...
 );
@@ -42,6 +48,8 @@ xlim([-border, window(3)+border]+window(1));
 ylim([-border, window(4)+border]+window(2));
 axis equal
 
+% TODO: Leader nodes can repel/attract; all leaders repel attract at the
+% same time, but only one of them is fixed
 
 % Run simulation
 for t = 1:1000
@@ -58,10 +66,16 @@ for t = 1:1000
         % Neighbors
         for j = neighbors(G, i)'  % Transpose because Matlab is dumb
             w = G.Edges.Weight(findedge(G, i, j));
-            % If either node is expanding, use max_dist as target
-            % If both nodes are contracting, use min_dist as target
-            if isExpanding % any(isExpanding([i, j]))
+            
+            % Set target distance
+            if isExpanding && any(isLeader([i, j]))
                 target_dist = max_dist;
+
+                % If J is a leader, then put less weight on this side of
+                % the edge to prevent collisions.
+                if isLeader(j)
+                    w = w * 0.1;
+                end
             else
                 target_dist = min_dist;
             end
@@ -70,19 +84,20 @@ for t = 1:1000
         end
     end
 
+    %%%%%%%%
     % Mode swapping. The state of the system is fully controlled by E(1,2)
+    %%%%%%%%
 
     % Done expanding edge   (1,2)
     if isExpanding && (edge_len(x, 1, 2) >= max_dist - tolerance)
         isExpanding = false;
-        isFixed([1,end]) = ~isFixed([1,end]);
-%         G.Edges.Weight(1) = 1;
+        isFixed(isLeader) = ~isFixed(isLeader);
     end
+
     % Done contracting edge (1,2)
     if ~isExpanding && (edge_len(x, 1, 2) <= min_dist + tolerance)
         isExpanding = true;
-        isFixed([1,end]) = ~isFixed([1,end]);
-%         G.Edges.Weight(1) = -1;
+        isFixed(isLeader) = ~isFixed(isLeader);
     end
 
     % Limit velocity to dx_max
@@ -94,25 +109,35 @@ for t = 1:1000
     x(:,1) = bound(x(:,1), window(1), window(1)+window(3));
     x(:,2) = bound(x(:,2), window(2), window(2)+window(4));
 
-    if any(x(:)==6) || any(x(:)==0)
-        isFixed([1,end]) = ~isFixed([1,end]);
+    % Reverse fixed node if we hit a wall
+    if ( ...
+        any(x(:,1)==window(1)) || any(x(:,1)==window(1)+window(3)) || ...
+        any(x(:,2)==window(2)) || any(x(:,2)==window(2)+window(4)) ...
+    )
+        isFixed(isLeader) = ~isFixed(isLeader);
     end
 
     % Update plot
-    debug_box.String=sprintf( ...
-        "Mode=%d\nE(1,2)=%.3f (%d,w=%d)\nE(2,3)=%.3f (%d,w=%d)", ...
-        isExpanding,...
-        edge_len(x,1,2), isFixed(1), G.Edges.Weight(1), ...
-        edge_len(x,2,3), isFixed(3), G.Edges.Weight(2) ...
-    );
+    debug_box.String=sprintf("Mode=%d", isExpanding);
     p.XData = x(:, 1);
     p.YData = x(:, 2);
+    q.XData = x(:, 1);
+    q.YData = x(:, 2);
+    q.UData = dx(:, 1);
+    q.VData = dx(:, 2);
 
     % Update node colors
     p.NodeColor = "#0072BD";  % Default blue
+    highlight(p, isLeader, NodeColor="blue")
     highlight(p, isFixed, NodeColor="red")
-    % Velocity vectors for convenience
-    % quiver(x(:,1), x(:,2), dx(:,1), dx(:,2), 0.3);
+    for id = find(isLeader)'
+        if isExpanding
+            c = "green";
+        else
+            c = "magenta";
+        end
+        highlight(p, id, neighbors(G,id), EdgeColor=c);
+    end
 
     pause(0.05)
 end
