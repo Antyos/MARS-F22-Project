@@ -5,30 +5,28 @@ bound = @(A, lower, upper) min(max(A,lower),upper);
 edge_len = @(x, i, j) norm(x(j,:)-x(i,:));
 
 
-min_dist = 0.5;
+tolerance = 0.1;
+
+min_dist = 0.4;
 max_dist = 1.5;
 dx_max = 0.02;
 
-x = [1 2; 2 2; 3 3; 4 2];
-dx = zeros(size(x));
-N = length(x);
+x = [1 2; 2 2; 3 3; 3 1];  % Position
+dx = zeros(size(x)); % Velocity
+N = length(x);  % Num nodes
 
-tail = 1;
-head = 3;
+isFixed = false(N, 1);  % Bool mask of which nodes are fixed
+isFixed(1) = true;
 
-edges = [1 2; 2 3; 3 4];
-weights = [1 1 1];
-isFixed = logical([1 0 0 0]);
+
+edges = [1 2; 2 3; 3 4; 2 4];
+weights = ones(length(edges), 1);
+
+isExpanding = 1;
 
 G = graph(edges(:,1), edges(:,2), weights);
 
-% Mode 1: Edge (1,2) expands, others contract 
-% Mode 3: Edge (2,3) expands, others contract
-
-mode = 1;
-
-tolerance = 0.1;
-
+% Plotting
 f = figure(1);
 clf(f);
 debug_box = annotation( ...
@@ -52,7 +50,7 @@ for t = 1:1000
             w = G.Edges.Weight(findedge(G, i, j));
             % If either node is expanding, use max_dist as target
             % If both nodes are contracting, use min_dist as target
-            if mode == 1 % any(isExpanding([i, j]))
+            if isExpanding % any(isExpanding([i, j]))
                 target_dist = max_dist;
             else
                 target_dist = min_dist;
@@ -65,14 +63,14 @@ for t = 1:1000
     % Mode swapping. The state of the system is fully controlled by E(1,2)
 
     % Done expanding edge   (1,2)
-    if mode == 1 && (edge_len(x, 1, 2) >= max_dist - tolerance)
-        mode = 0;
+    if isExpanding && (edge_len(x, 1, 2) >= max_dist - tolerance)
+        isExpanding = false;
         isFixed([1,end]) = ~isFixed([1,end]);
 %         G.Edges.Weight(1) = 1;
     end
     % Done contracting edge (1,2)
-    if mode == 0 && (edge_len(x, 1, 2) <= min_dist + tolerance)
-        mode = 1;
+    if ~isExpanding && (edge_len(x, 1, 2) <= min_dist + tolerance)
+        isExpanding = true;
         isFixed([1,end]) = ~isFixed([1,end]);
 %         G.Edges.Weight(1) = -1;
     end
@@ -92,7 +90,7 @@ for t = 1:1000
 
     set(debug_box, String=sprintf( ...
         "Mode=%d\nE(1,2)=%.3f (%d,w=%d)\nE(2,3)=%.3f (%d,w=%d)", ...
-        mode,...
+        isExpanding,...
         edge_len(x,1,2), isFixed(1), G.Edges.Weight(1), ...
         edge_len(x,2,3), isFixed(3), G.Edges.Weight(2) ...
     ));
