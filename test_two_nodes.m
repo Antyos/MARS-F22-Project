@@ -1,4 +1,4 @@
-set(0,'DefaultFigureWindowStyle','docked')
+%set(0,'DefaultFigureWindowStyle','docked')
 rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
 bound = @(A, lower, upper) min(max(A,lower),upper);
 
@@ -22,7 +22,7 @@ G = graph(edges(:,1), edges(:,2), weights);
 mode = 1; % 1:Push from tail(1), -1:Pull to head(5)
 clearance = 0.1;
 
-for t = 1:1000
+for t = 1:500
     dx(:,:) = 0; % Reset dx
     % Consensus
     for i = 1:N
@@ -55,16 +55,16 @@ for t = 1:1000
 
     % Constrain to screen
     x(:,1) = bound(x(:,1), 0, 6);
-    x(:,2) = bound(x(:,2), 0, 6);
+    x(:,2) = bound(x(:,2), 1, 3);
     %hold on
     plot(G, XData=x(:,1), YData=x(:,2));
+    axis equal
     hold on
     % Velocity vectors for convenience
     quiver(x(:,1), x(:,2), dx(:,1), dx(:,2), 0.3);
     xlim([0 7])
-    ylim([0 5])
+    ylim([1 3])
     hold off
-    axis equal
 
-    pause(0.05)
+    pause(0.01);
 end
