@@ -7,7 +7,7 @@ fi = @(varargin)varargin{length(varargin)-varargin{1}};
 
 N = 5;  % Number of robots
 
-initial_conditions = generate_initial_conditions(N, "Width", 2, "Height", 1, "Spacing", 0.5);
+initial_conditions = generate_initial_conditions(N, "Width", 3, "Height", 1.8, "Spacing", 0.3);
 r = Robotarium("NumberOfRobots", N, "ShowFigure", true, "InitialConditions", initial_conditions);
 
 %% Set up constants for experiment
@@ -92,7 +92,6 @@ for t = 1:iterations
             "MarkerSize", MARKER_SIZE, ...
             "EdgeFontSize", FONT_SIZE ...
         );
-        fprintf("Replot!\n");
     end
 
     % Swap fixed node if we hit a wall
@@ -176,8 +175,8 @@ for t = 1:iterations
     mode_text.String = fi(isExpanding, "Mode: Expanding", "Mode: Contracting");
 
     % Label edges with their length
-    edge_lengths = arrayfun(@(row) edge_len(x, G.Edges.EndNodes(row, 1), G.Edges.EndNodes(row, 2)), 1:G.numedges);
-    labeledge(p, 1:length(edge_lengths), arrayfun(@(s) num2str(s, 2), edge_lengths, 'UniformOutput', false))
+%     edge_lengths = arrayfun(@(row) edge_len(x, G.Edges.EndNodes(row, 1), G.Edges.EndNodes(row, 2)), 1:G.numedges);
+%     labeledge(p, 1:length(edge_lengths), arrayfun(@(s) num2str(s, 2), edge_lengths, 'UniformOutput', false))
 
     % Update node colors
     p.NodeColor = "black";
