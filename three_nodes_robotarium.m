@@ -5,7 +5,7 @@ edge_len = @(x, i, j) norm(x(j,1:2)-x(i,1:2));
 % Inline conditional: https://stackoverflow.com/a/32253460
 fi = @(varargin)varargin{length(varargin)-varargin{1}};
 
-N = 3;  % Number of robots
+N = 5;  % Number of robots
 
 initial_conditions = generate_initial_conditions(N, "Width", 2, "Height", 1, "Spacing", 0.5);
 r = Robotarium("NumberOfRobots", N, "ShowFigure", true, "InitialConditions", initial_conditions);
@@ -17,7 +17,7 @@ formation_control_gain = 10;
 
 % Select the number of iterations for the experiment.  This value is
 % arbitrary
-iterations = 5000;
+iterations = 2000;
 
 % Single-integrator -> unicycle dynamics mapping
 si_to_uni_dyn = create_si_to_uni_dynamics('LinearVelocityGain', 0.8);
@@ -39,6 +39,9 @@ dx_max = 3/4*r.max_linear_velocity;   % Max speed
 
 dx = zeros(N,2); % Velocity
 
+% Initial position
+x = r.get_poses()';
+
 % Bool mask of leader nodes
 isLeader = false(N, 1);
 isLeader([1, end]) = true;
@@ -47,16 +50,16 @@ isLeader([1, end]) = true;
 isFixed = false(N, 1);
 isFixed(1) = true;
 
-edges = proximity_graph(x, 2);
-weights = ones(height(edges), 1);
+edges = proximity_graph(x, max_dist);
+[num_edges, ~] = size(edges);
+weights = ones(num_edges, 1);
 
 isExpanding = true;
 super_leader = 1;  % Node responsible for controlling expansion
 
-G = graph(edges.EndNodes(:,1), edges.EndNodes(:,2), weights);
+G = graph(edges(:,1), edges(:,2), weights, N);
 
 % Setup plotting
-x = r.get_poses()';
 p = plot(G, "XData", x(:,1), "YData", x(:,2), ...
     "LineWidth",3, ...
     "EdgeColor", "black", ...
@@ -76,7 +79,21 @@ for t = 1:iterations
     % Retrieve the most recent poses from the Robotarium.  The time delay is
     % approximately 0.033 seconds
     x = r.get_poses()';
-    G = add_new_edges(G, proximity_graph(x, max_dist));
+    
+    % Update graph
+    new_edges = proximity_graph(x, max_dist/2, G);
+    if ~isempty(new_edges)
+        G = addedge(G, new_edges(:,1), new_edges(:,2), length(new_edges));
+        % Replot
+        delete(p);
+        p = plot(G, "XData", x(:,1), "YData", x(:,2), ...
+            "LineWidth",3, ...
+            "EdgeColor", "black", ...
+            "MarkerSize", MARKER_SIZE, ...
+            "EdgeFontSize", FONT_SIZE ...
+        );
+        fprintf("Replot!\n");
+    end
 
     % Swap fixed node if we hit a wall
     if ( ...
@@ -121,8 +138,10 @@ for t = 1:iterations
 
     %% Mode swapping. The state of the system is fully controlled by E(1,2)
 
-    % Done expanding
+    % Get all edge lengths of the super_leader
     super_leader_edge_lens = arrayfun(@(j) edge_len(x, super_leader, j), neighbors(G, super_leader));
+
+    % Done expanding
     if isExpanding && (max(super_leader_edge_lens) >= max_dist - close_enough)
         isExpanding = false;
         isFixed(isLeader) = ~isFixed(isLeader);
@@ -164,13 +183,8 @@ for t = 1:iterations
     p.NodeColor = "black";
     highlight(p, isLeader, "NodeColor", "blue")
     highlight(p, isFixed, "NodeColor", "red")
-    for id = find(isLeader)'
-        if isExpanding
-            c = "green";
-        else
-            c = "magenta";
-        end
-        highlight(p, id, neighbors(G,id), "EdgeColor", c);
+    for i = find(isLeader)'
+        highlight(p, i, neighbors(G,i), "EdgeColor", fi(isExpanding, 'g', 'm'));
     end
 
     r.step()
@@ -181,26 +195,25 @@ r.debug()
 %% Helper Functions
 
 % Delta-disk graph: get edges of all nodes within certain distance
-function edges = proximity_graph(x, dist)
+function edges = proximity_graph(x, dist, G)
     edge_len = @(x, i, j) norm(x(j,1:2)-x(i,1:2));
 
-    N = length(x);
+    [N,~] = size(x);
     edges = cell(0, 1);
     for i = 1:N-1
         for j = i+1:N
+            % Skip if we already have an edge
+            if exist('G', 'var') && findedge(G, i, j)
+                continue
+            end
+            
+            % Check distance for edge
             if edge_len(x, i, j) <= dist
                 edges{end+1,1} = [i j]; %#ok
             end
         end
     end
-    edges = cell2table(edges, "VariableNames", "EndNodes");
-end
-
-% Add new edges and remove duplicates
-function G = add_new_edges(G, edges)
-    if ismultigraph(G)
-        G = simplify(addedge(G, edges));
-    end
+    edges = cell2mat(edges);
 end
 
 

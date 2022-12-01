@@ -104,9 +104,11 @@ for t = 1:1000
 
 
     % Mode swapping. The state of the system is fully controlled by E(1,2)
+    
+    % Get all edge lengths of the super_leader
+    super_leader_edge_lens = arrayfun(@(j) edge_len(x, super_leader, j), neighbors(G, super_leader));
 
     % Done expanding
-    super_leader_edge_lens = arrayfun(@(j) edge_len(x, super_leader, j), neighbors(G, super_leader));
     if isExpanding && (max(super_leader_edge_lens) >= max_dist - close_enough)
         isExpanding = false;
         isFixed(isLeader) = ~isFixed(isLeader);
