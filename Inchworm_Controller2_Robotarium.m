@@ -1,12 +1,12 @@
+% Inchworm Controller 2 - Nathan Hampton - Robotarium
+
+% Note: init.m must be ran before running this script!
+
 %% Set up Robotarium object
 set(0,'DefaultFigureWindowStyle','docked')
 
-% v = VideoWriter('Inchworm_Var_Dists.mp4', 'MPEG-4');
-% open(v);
-
-% Function for magnitude of each row
+% Functions for velocity magnitude and getting actual edge lengths
 rowmag = @(A) sqrt(sum(A.^2,2));
-% Function for actual edge lengths
 edge_len = @(x, i, j) norm(x(j,1:2)-x(i,1:2));
 
 N = 5;
@@ -17,7 +17,7 @@ r = Robotarium('NumberOfRobots', N, 'ShowFigure', true, 'InitialConditions', ini
 % Define the max linear velocity
 dx_max = 3/4*r.max_linear_velocity;
 
-%% Create barrier certificates and dynamics transformers
+% Create barrier certificates and dynamics transformers
 
 uni_barrier_cert = create_uni_barrier_certificate_with_boundary();
 si_barrier_cert = create_si_barrier_certificate_with_boundary();
@@ -52,7 +52,7 @@ x = r.get_poses();
 r.step();
 
 while(~init_checker(x, initial_positions))
-
+    % Get the most recent poses and agent velocities
     x = r.get_poses();
     dx = controller(x(1:2, :), initial_positions(1:2, :));
 
@@ -67,19 +67,16 @@ while(~init_checker(x, initial_positions))
 
     r.set_velocities(1:N, dxu);
     r.step();
-
-%     frame = getframe(gcf);
-%     writeVideo(v,frame);
 end
 
 %% Set up constants and variables for inchworm formation control
 
-% Edge Weights
+% Priority edge weights
 w1 = 100;
 w2 = 40;
 w3 = 10;
 
-% Variable Distances
+% Variable distances
 d24 = d24r;
 d13 = d13r;
 d35 = d35r;
@@ -130,19 +127,26 @@ for t = 0:iterations
     % Get leader agent and reset dx
     leader = mode_leaders(mode);
     dx(:,:) = 0;
-
+    
+    % Loop through all agents
     for i = 1:N
+        % For all agents that aren't the leader, execute the algorithm
         if i ~= leader
+            % Loop through the current agent's neighbors
             for j = neighbors(G, i)'
+                % Get the priority weight and desired length for the
+                % current edge
                 w = G.Edges.Weight(findedge(G, i, j));
                 target_dist = dists(findedge(G,i,j));
+
+                % Execute the formation controller
                 dx(i,:) = dx(i,:) + formation_control_gain*w*(edge_len(x(:,1:2), i, j)^2 - target_dist^2)*(x(j,1:2)-x(i,1:2));
             end
         end
     end
 
     % Mode switching (check if variable distances are close enough to
-    % desired values, and switch leader and values if they are
+    % desired values, and switch leader and values if they are)
     if abs(edge_len(x,2,4) - dists(findedge(G,2,4))) <= close_enough && ...
        abs(edge_len(x,1,3) - dists(findedge(G,1,3))) <= (close_enough - 0.05) && ...
        abs(edge_len(x,3,5) - dists(findedge(G,3,5))) <= (close_enough - 0.05)
@@ -179,9 +183,6 @@ for t = 0:iterations
     % Send the previously set velocities to the agents.  This function must be called!
     r.step();
 
-%     frame = getframe(gcf);
-%     writeVideo(v,frame);
-
     % If a leader has gotten too close to a wall, swap the mode leaders
     if abs(x(leader,1) - r.boundaries(1)) <= wall_clearance || ...
        abs(x(leader,1) - r.boundaries(2)) <= wall_clearance || ...
@@ -190,7 +191,5 @@ for t = 0:iterations
         mode_leaders([1 2]) = mode_leaders([2 1]);
     end
 end
-
-% close(v);
 
 r.debug();

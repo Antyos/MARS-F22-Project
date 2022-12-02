@@ -1,5 +1,8 @@
+% Inchworm Controller 1 - Nathan Hampton - Robotarium
+
+% Note: init.m must be ran before running this script!
+
 %% Set up Robotarium object
-%set(0,'DefaultFigureWindowStyle','docked')
 
 N = 4;
 initial_conditions = generate_initial_conditions(N, 'Width', 2, 'Height', 1, 'Spacing', 0.5);
@@ -38,6 +41,7 @@ si_to_uni_dyn = create_si_to_uni_dynamics('LinearVelocityGain', 0.5, 'AngularVel
 for t = 0:iterations
     % Change mode variables
     switch mode
+        % Expand mode: "tail" is leader and longer desired edge lengths
         case 1 
             d = 0.4;
             leader = 1;
@@ -45,6 +49,7 @@ for t = 0:iterations
                          d   0   d   0; ...
                        2*d   d   0   d; ...
                        3*d   0   d   0];
+        % Contract mode: "head" is leader and shorter desired edge lengths
         case 2
             d = 0.3;
             dd = sqrt(2*(d^2));
@@ -54,10 +59,6 @@ for t = 0:iterations
                         d dd  0  d; ...
                        dd  0  d  0];
     end
-
-    % Weight matrix containing the desired inter-agent distances to achieve a
-    % rectuangular formation
-    
     
     % Retrieve the most recent poses from the Robotarium.  The time delay is
     % approximately 0.033 seconds
@@ -78,7 +79,6 @@ for t = 0:iterations
         % topology
         if(i ~= leader)
             for j = topological_neighbors(L, i)
-                
                 % For each neighbor, calculate appropriate formation control term and
                 % add it to the total velocity
                 dx(:, i) = dx(:, i) + ...
@@ -107,7 +107,7 @@ for t = 0:iterations
     r.step();
 
     %% Switch mode (time/iteration based)
-
+    
     if(mod(t,2000) == 0)
         mode = 1;
     elseif(mod(t,1000) == 0)

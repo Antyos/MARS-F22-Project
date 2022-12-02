@@ -1,9 +1,13 @@
-set(0,'DefaultFigureWindowStyle','docked')
-rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
-bound = @(A, lower, upper) min(max(A,lower),upper);
+% Inchworm Controller 2 - Nathan Hampton - Simulation
 
-v = VideoWriter('Inchworm_Var_Dists_Sim.mp4', 'MPEG-4');
-open(v);
+% This is the final version of Nathan's controller that achieves the motion
+% and shape of an inchworm
+
+set(0,'DefaultFigureWindowStyle','docked')
+
+% Functions for velocity magnitude and screen bounding
+rowmag = @(A) sqrt(sum(A.^2,2));
+bound = @(A, lower, upper) min(max(A,lower),upper);
 
 % Lower and upper x and y limits, as well as clearance for walls
 xmin = 0;
@@ -20,7 +24,7 @@ N = length(x);
 dx = zeros(size(x));
 dx_max = 0.02;
 
-% Edge Weights
+% Edge priority weights
 w1 = 100;
 w2 = 40;
 w3 = 10;
@@ -41,9 +45,12 @@ dists =   [d  ; d13; d  ; d24; d  ; d35; d  ];
 % Create graph object
 G = graph(edges(:,1), edges(:,2), weights);
 
-mode = 1; % 1:Push tail(1), -1:Pull to head(5)
+% Modes and leader initialization
+mode = 1;
 leader = 5;
 mode_leaders = [5 1];
+
+% "Close enough" clearance for edge lengths
 clearance = 0.2;
 
 % Plot graph
@@ -54,17 +61,33 @@ axis equal
 xlim([0 10])
 ylim([-3 3])
 
-for t = 1:1000
+% Number of iterations
+iterations = 1000;
+
+% Begin algorithm
+for t = 1:iterations
+    % Set the leader based on the current mode
     leader = mode_leaders(mode);
-    dx(:,:) = 0; % Reset dx
+    
+    % Reset dx
+    dx(:,:) = 0;
+    
+    % Loop through all agents
     for i = 1:N
-        for j = neighbors(G, i)'  % Transpose because Matlab is dumb
-            w = G.Edges.Weight(findedge(G, i, j));
-            target_dist = dists(findedge(G,i,j));
-            dx(i,:) = dx(i,:) + 0.5*abs(w)*(norm(x(j,:)-x(i,:))^2 - target_dist^2)*(x(j,:)-x(i,:));
+        % For all agents that aren't the leader, execute the algorithm
+        if i~= leader
+            % Loop through the current agent's neighbors
+            for j = neighbors(G, i)'
+                % Get the priority weight and desired length for the
+                % current edge
+                w = G.Edges.Weight(findedge(G, i, j));
+                target_dist = dists(findedge(G,i,j));
+
+                % Execute the formation controller
+                dx(i,:) = dx(i,:) + 0.5*abs(w)*(norm(x(j,:)-x(i,:))^2 - target_dist^2)*(x(j,:)-x(i,:));
+            end
         end
     end
-    dx(leader,:) = 0;
 
     % Mode switching (check if variable distances are close enough to
     % desired values, and switch leader and values if they are
@@ -94,26 +117,14 @@ for t = 1:1000
     p.XData = x(:,1);
     p.YData = x(:,2);
 
-%     if abs(x(1,1) - xmin) <= wall_clearance || ...
-%        abs(x(1,1) - xmax) <= wall_clearance || ...
-%        abs(x(1,2) - ymin) <= wall_clearance || ...
-%        abs(x(1,2) - ymax) <= wall_clearance || ...
-%        abs(x(5,1) - xmin) <= wall_clearance || ...
-%        abs(x(5,1) - xmax) <= wall_clearance || ...
-%        abs(x(5,2) - ymin) <= wall_clearance || ...
-%        abs(x(5,2) - ymax) <= wall_clearance
-%         mode_leaders([1 2]) = mode_leaders([2 1]);
-%     end
-
+    % If the leader is within the clearance of any wall, swap the mode
+    % leaders
     if abs(x(leader,1) - xmin) <= wall_clearance || ...
        abs(x(leader,1) - xmax) <= wall_clearance || ...
        abs(x(leader,2) - ymin) <= wall_clearance || ...
        abs(x(leader,2) - ymax) <= wall_clearance
         mode_leaders([1 2]) = mode_leaders([2 1]);
     end
-    frame = getframe(gcf);
-    writeVideo(v,frame);
 
     pause(0.02);
 end
-close(v);
