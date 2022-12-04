@@ -1,5 +1,13 @@
-clear;
-% set(0,'DefaultFigureWindowStyle','docked')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Simple simulation of N nodes using the weight-swapping controller. Define your
+% initial positions in `x`. Edges are assigned using a Delta-disk proximity
+% model.
+%
+% Author: Andrew Glick
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
 bound = @(A, lower, upper) min(max(A,lower),upper);
 edge_len = @(x, i, j) norm(x(j,:)-x(i,:));
@@ -53,11 +61,8 @@ xlim([-border, window(3)+border]+window(1));
 ylim([-border, window(4)+border]+window(2));
 axis equal
 
-% TODO: Leader nodes can repel/attract; all leaders repel attract at the
-% same time, but only one of them is fixed
-
 % Run simulation
-for t = 1:1000
+for t = 1:iterations
     % Reset dx
     dx(:,:) = 0;
 
@@ -163,6 +168,7 @@ end
 %% Helper Functions
 
 % Delta-disk graph: get edges of all nodes within certain distance
+% I've written better code, but this is passable
 function edges = proximity_graph(x, dist, G)
     edge_len = @(x, i, j) norm(x(j,1:2)-x(i,1:2));
 

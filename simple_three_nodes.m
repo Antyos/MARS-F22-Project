@@ -1,3 +1,12 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Simple simulation of three nodes using the target distance-swapping
+% controller. Edges must be manually defined.
+%
+% Author: Andrew Glick
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 clear;
 % set(0,'DefaultFigureWindowStyle','docked')
 rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
@@ -47,9 +56,6 @@ rectangle(Position=window);
 xlim([-border, window(3)+border]+window(1));
 ylim([-border, window(4)+border]+window(2));
 axis equal
-
-% TODO: Leader nodes can repel/attract; all leaders repel attract at the
-% same time, but only one of them is fixed
 
 % Run simulation
 for t = 1:1000

@@ -1,4 +1,5 @@
-%set(0,'DefaultFigureWindowStyle','docked')
+% Basic simulation that tests two nodes with mode swapping
+
 rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
 bound = @(A, lower, upper) min(max(A,lower),upper);
 

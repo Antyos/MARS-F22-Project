@@ -1,4 +1,13 @@
-% set(0,'DefaultFigureWindowStyle','docked')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Robotarium simulation of N nodes using the target distance-swapping
+% controller. Set number of robots with `N`. Edges are calculated using a
+% delta-disk proximity model.
+%
+% Author: Andrew Glick
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
 bound = @(A, lower, upper) min(max(A,lower),upper);
 edge_len = @(x, i, j) norm(x(j,1:2)-x(i,1:2));

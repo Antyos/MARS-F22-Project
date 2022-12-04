@@ -1,3 +1,13 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Simple simulation of three nodes using the weight-swapping controller. This
+% controller does not work very well, but it has been left here should it be
+% relevant in the future.
+%
+% Author: Andrew Glick
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
 bound = @(A, lower, upper) min(max(A,lower),upper);
 edge_len = @(x, i, j) norm(x(j,:)-x(i,:));
