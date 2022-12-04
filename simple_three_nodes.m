@@ -133,7 +133,7 @@ for t = 1:1000
     q.VData = dx(:, 2);
 
     % Update node colors
-    p.NodeColor = "#0072BD";  % Default blue
+    p.NodeColor = "black";  % Default blue
     highlight(p, isLeader, NodeColor="blue")
     highlight(p, isFixed, NodeColor="red")
     for id = find(isLeader)'

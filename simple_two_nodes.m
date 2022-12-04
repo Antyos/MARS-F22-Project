@@ -1,4 +1,11 @@
-% Basic simulation that tests two nodes with mode swapping
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Simple simulation of two nodes and one edge using a target distance-based
+% controller.
+%
+% Author: Andrew Glick
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 rowmag = @(A) sqrt(sum(A.^2,2));  % Magnitude of each row
 bound = @(A, lower, upper) min(max(A,lower),upper);
@@ -16,7 +23,7 @@ dx_max = 0.02;
 N = length(x);
 
 edges = [1 2];
-weights = [1];
+weights = 1;
 
 G = graph(edges(:,1), edges(:,2), weights);
 

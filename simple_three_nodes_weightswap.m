@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % Simple simulation of three nodes using the weight-swapping controller. This
-% controller does not work very well, but it has been left here should it be
+% controller DOES NOT WORK very well, but it has been left here should it be
 % relevant in the future.
 %
 % Author: Andrew Glick
